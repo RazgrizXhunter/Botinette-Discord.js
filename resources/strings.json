@@ -1,0 +1,62 @@
+{
+	"index" : {
+		"default_execution_error" : {
+			"es" : "El comando no se ha podido ejecutar.",
+			"en" : "The command could not be executed."
+		}
+	},
+	"command_convertir" : {
+		"name" : {
+			"es" : "convertir",
+			"en" : "convert" 
+		},
+		"description" : {
+			"es" : "Convierte la hora de un país al resto en formato 24h! (Por defecto desde España).",
+			"en" : "Converts the time zone from one country to the registered using 24h format! (From Spain by default)."
+		},
+		"option_name" : {
+			"es" : "tiempo",
+			"en" : "time"
+		},
+		"option_description" : {
+			"es" : "hh:mm [DD/MM[/AA]] [País]",
+			"en" : "hh:mm [DD/MM[/YY]] [Country]"
+		},
+		"execution_error" : {
+			"es" : "Formato de hora incorrecto, revisa la descripción.",
+			"en" : "Wrong time format, check the description."
+		}
+	},
+	"command_setup" : {
+		"name" : {
+			"es" : "setup",
+			"en" : "setup"
+		},
+		"description" : {
+			"es" : "Creará un canal para identificar las nacionalidades de los usuarios.",
+			"en" : "Creates a new text channel to identify users' nationalities."
+		},
+		"channel_name" : {
+			"es" : "botinette-paises",
+			"en" : "botinette-countries"
+		},
+		"setup_succesfull" : {
+			"es" : "✅ Se ha ejecutado con éxito el setup.",
+			"en" : "✅ The setup has been executed succesfully."
+		},
+		"setup_error" : {
+			"es" : "❌ El setup no se ha podido ejecutar.",
+			"en" : "❌ The setup could not be executed."
+		},
+		"embed" : {
+			"author" : {
+				"es" : "¡Reacciona con la bandera de tu país!",
+				"en" : "React with your country flag!"
+			},
+			"description" : {
+				"es" : "Reaccionando con la bandera de tu país, cada vez que se use el comando /hora, convertiré la hora de españa a la hora de tu país.",
+				"en" : "to be defined"
+			}
+		}
+	}
+}

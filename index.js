@@ -24,6 +24,7 @@ SOFTWARE.
 const fs = require('fs');
 const { Client, Intents, Collection } = require("discord.js");
 const { token } = require("./config.json");
+const strings = require("./resources/strings.json").index;
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES ] });
 
@@ -49,8 +50,8 @@ client.on("interactionCreate", async interaction => {
 	try {
 		await command.execute(interaction);
 	} catch (error) {
-		console.error(error);
-		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		console.log(error);
+		await interaction.reply({ content: strings.default_execution_error, ephemeral: true });
 	}
 });
 

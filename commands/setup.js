@@ -1,28 +1,29 @@
 const { GuildChannelManager, MessageEmbed, MessageAttachment  } = require("discord.js");
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const dotenv = require("dotenv").config();
+const strings = require("../resources/strings.json").command_setup;
+const lang = "es";
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('setup')
-		.setDescription('Creará un canal para identificar las nacionalidades de los usuarios.'),
+		.setName(strings.name[lang])
+		.setDescription(strings.description[lang]),
 		
 		async execute(interaction) {
-			const channelName = "botinette-paises";
+			const channelName = strings.channel_name[lang];
 			const channelSnowflake = await createChannelIfNotExists(interaction, channelName);
 
-			let message;
+			let reply;
 
 			if (channelSnowflake) {
 				sendSetupMessages(interaction, channelSnowflake);
-
-				message = "✅ Se ha ejecutado con éxito el setup.";
+				reply = strings.setup_succesfull[lang];
 			} else {
-				message = "❌ El setup no se ha podido ejecutar.";
+				reply = strings.setup_error[lang];
 			}
 
 			try {
-				sendTimedMessage(interaction, message, 5);
+				await sendTimedMessage(interaction, reply, 5);
 			} catch (error) {
 				console.log(error);
 			}
@@ -41,7 +42,7 @@ async function createChannelIfNotExists(interaction, channelName) {
 	return await guildChannelManager.create(channelName, {
 		type: "text",
 		permissionOverwrites: [{
-			id: interaction.guild.id, //Same as @Everyone, don't know how to get it, but the function does the exact same
+			id: interaction.guild.id, //Same as @Everyone, don't know how to get it, but the function does the exact same. Apparently the owner of the server isn't part of @everyone
 			deny: ["SEND_MESSAGES"]
 		}]
 	})
@@ -57,19 +58,19 @@ async function createChannelIfNotExists(interaction, channelName) {
 async function sendSetupMessages(interaction, channelSnowflake) {
 	const selectedChannel = interaction.guild.channels.cache.find(channel => channel.id == channelSnowflake);
 
-	const coverImage = new MessageAttachment("./resources/cover.png");
+	const coverImage = new MessageAttachment("./resources/embed_cover.png");
 
 	const messageEmbed = new MessageEmbed()
-	.setAuthor("¡Reacciona con la bandera de tu país!")
-	.setDescription("Reaccionando con la bandera de tu país, cada vez que se use el comando /hora, convertiré la hora de españa a la hora de tu país.")
-	.setImage("attachment://cover.png")
+	.setAuthor(strings.embed.author[lang])
+	.setDescription(strings.embed.description[lang])
+	.setImage("attachment://embed_cover.png")
 	.setColor("#6C9CF0");
 
-	await selectedChannel.send({ files: ["./resources/banner.png"] });
+	await selectedChannel.send({ files: ["./resources/embed_banner.png"] });
 	await selectedChannel.send({ embeds: [messageEmbed], files: [coverImage] });
 }
 
-function sendTimedMessage(interaction, message, seconds) {
+async function sendTimedMessage(interaction, message, seconds) {
 	interaction.reply(message)
 	.then(
 		setTimeout(() => {
@@ -79,8 +80,6 @@ function sendTimedMessage(interaction, message, seconds) {
 }
 
 /* Requerimientos
-	-si es posible debe limitar los emojis sólo a las banderas de países
-	-crear un canal nuevo en el que nadie más que el bot pueda hablar, pero puedan reaccionar
-	-si un usuario marca más de una bandera, que se guarde sólo la primera que marcó
 	-añadir un servidor nosql para guardar los países, zona horaria y emoji
+	-si un usuario marca más de una bandera, que se guarde sólo la primera que marcó
 */
