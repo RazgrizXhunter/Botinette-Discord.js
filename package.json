@@ -4,8 +4,8 @@
   "description": "Backend for the utility bot \"Botinette\", a utility Discord bot made for MarinetteNyan's Discord server.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "test": "NODE_ENV=development node index.js",
+    "start": "NODE_ENV=production node index.js"
   },
   "keywords": [],
   "author": "Aldo Tapia (Razgriz)",

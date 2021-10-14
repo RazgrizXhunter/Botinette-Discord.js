@@ -1,12 +1,24 @@
+const mongoose = require("mongoose");
 const strings = require("../resources/strings").index;
+const Guild = require("../model/Guild");
 
 module.exports = {
-	revive: (client) => {
-		const guilds = client.guilds.cache;
-		console.log("I'm glad to be alive... sike.");
+	revive: async (client) => {
+		const guilds = client.guilds.cache; //get the servers the bot is in
+		
+		guilds.forEach(guild => {
+			let result = Guild.findOne({ guildId: guild.id });
+
+			if (result) {
+				console.log("oops, it exists");
+			} else {
+				console.log("nope, it doesnt exist");
+			}
+		});
+
 		return;
 
-		const database = getDatabase();
+
 		
 		try {
 			updateGuildDatabase(guilds, database);

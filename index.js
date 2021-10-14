@@ -33,7 +33,10 @@ const token = process.env.TOKEN;
 
 const database = require("./controller/mongoDB").connect(
 	process.env.MONGOOSE_URI,
-	process.env.MONGOOSE_PORT
+	process.env.MONGOOSE_PORT,
+	process.env.MONGOOSE_USER,
+	process.env.MONGOOSE_PASSWORD,
+	process.env.NODE_ENV == "development" ? "Botinette-Dev" : "Botinette"
 );
 
 const client = new Client({
@@ -60,7 +63,7 @@ client.once("ready", () => {
 	console.log(`The bot has been revived.`);
 });
 
-client.on("interactionCreate", async interaction => {
+client.on("interactionCreate", async (interaction) => {
 	const command = client.commands.get(interaction.commandName);
 	if (!interaction.isCommand() && !command) return;
 
