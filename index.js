@@ -21,38 +21,100 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-const fs = require('fs');
-const { Client, Intents, Collection } = require("discord.js");
-const { token } = require("./config.json");
-const strings = require("./resources/strings.json").index;
+require("dotenv").config();
 
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES ] });
+const { Client, Intents } = require("discord.js");
+const strings = require("./resources/strings").index;
+const handler = require("./controller/handler");
+const commandManager = require("./controller/commandManager");
 
-client.commands = new Collection();
+const lang = process.env.APP_LANG || "es";
+const token = process.env.TOKEN;
 
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+const database = require("./controller/mongoDB").connect(
+	process.env.MONGOOSE_URI,
+	process.env.MONGOOSE_PORT
+);
 
-for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
-	client.commands.set(command.data.name, command);
-}
+const client = new Client({
+	intents: [
+		Intents.FLAGS.GUILDS,
+		Intents.FLAGS.GUILD_MESSAGES,
+		Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
+		Intents.FLAGS.GUILD_VOICE_STATES //Not necessary if the bot wont play music
+	], partials: [
+		"REACTION",
+		"MESSAGE"
+	]
+});
 
-client.once('ready', () => {
-	console.log('Ready!');
+commandManager.importCommands(client);
+
+client.once("ready", () => {
+	try {
+		handler.revive(client);
+	} catch (error) {
+		console.log(`There was an error while reviving the bot.\n${error}`);
+	}
+
+	console.log(`The bot has been revived.`);
 });
 
 client.on("interactionCreate", async interaction => {
-	if (!interaction.isCommand()) return;
-
 	const command = client.commands.get(interaction.commandName);
-	if (!command) return;
+	if (!interaction.isCommand() && !command) return;
 
 	try {
 		await command.execute(interaction);
 	} catch (error) {
-		console.log(error);
-		await interaction.reply({ content: strings.default_execution_error, ephemeral: true });
+		console.log(`There was a fatal error executing the command: ${command}`);
+		await interaction.reply({ content: strings.default_execution_error[lang], ephemeral: true });
 	}
+});
+
+client.on("messageReactionAdd", async (reaction, user) => {
+	if (reaction.message.partial) {
+		try {
+			await reaction.message.fetch();
+		} catch (error) {
+			console.log(error);
+		}
+	}
+
+	//check if the reaction was to the correct message
+	//check if the reaction was a country flag, otherwise delete the reaction and send timed message warning the user to use a flag	
+
+	console.log(`The user: ${user.username} has reacted with ${reaction.emoji}\nid:${user.id}`);
+});
+
+client.on("messageReactionRemove", async (reaction, user) => {
+	if (reaction.message.partial) {
+		try {
+			await reaction.message.fetch();
+		} catch (error) {
+			console.log(error);
+		}
+	}
+
+	//check if the reaction was to the correct message
+	//check if the reaction was a country flag, otherwise delete the reaction and send timed message warning the user to use a flag	
+
+	console.log(`A reaction has been removed from a message.\n${reaction.emoji}`);
+});
+
+client.on("guildCreate", (guild) => {
+	//save ID and name to the db
+	console.log(`The bot has been added to a guild: ${guild.id}`);
+});
+
+client.on("channelUpdate", (oldChannel, newChannel) => {
+	//update name with said ID to the db
+	console.log(`A guild the bot is in has been updated: ${oldChannel.id}`);
+});
+
+client.on("guildDelete", (guild) => {
+	//remove channel from the db
+	console.log(`The bot has been removed from a guild: ${guild.id}`);
 });
 
 client.login(token);

@@ -1,9 +1,10 @@
+const dotenv = require("dotenv").config();
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { DateTime } = require("luxon");
 
+const lang = process.env.APP_LANG || "es";
 const strings = require("../resources/strings.json").command_convertir;
-
-const lang = "es";
+const locale = require("../resources/strings.json").shared.locale[lang];
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -49,7 +50,7 @@ function getDateTime(unformattedString) {
 	console.log(JSON.stringify(unformattedObject));
 	
 	try {
-		return DateTime.fromObject(unformattedObject, { zone: timezone, locale: "es-ES" });
+		return DateTime.fromObject(unformattedObject, { zone: timezone, locale: locale });
 	} catch (error) {
 		console.log(error);
 		return false;

@@ -1,8 +1,10 @@
-const { SlashCommandBuilder } = require('@discordjs/builders');
+require("dotenv").config();
+
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
-const { clientId, guildId, token } = require('./config.json');
 const fs = require('fs');
+
+const clientId = process.env.CLIENT_ID, guildId = process.env.GUILD_ID, token = process.env.TOKEN;
 
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));

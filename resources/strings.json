@@ -1,4 +1,10 @@
 {
+	"shared" : {
+		"locale" : {
+			"es" : "es-ES",
+			"en" : "en-US"
+ 		}
+	},
 	"index" : {
 		"default_execution_error" : {
 			"es" : "El comando no se ha podido ejecutar.",

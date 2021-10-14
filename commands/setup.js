@@ -1,8 +1,10 @@
+require("dotenv").config();
+
 const { GuildChannelManager, MessageEmbed, MessageAttachment  } = require("discord.js");
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const dotenv = require("dotenv").config();
+
 const strings = require("../resources/strings.json").command_setup;
-const lang = "es";
+const lang = process.env.APP_LANG || "es";
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -13,10 +15,12 @@ module.exports = {
 			const channelName = strings.channel_name[lang];
 			const channelSnowflake = await createChannelIfNotExists(interaction, channelName);
 
+			console.log(`The channel has been created, and it's snowflake is: ${channelSnowflake}`);
+
 			let reply;
 
 			if (channelSnowflake) {
-				sendSetupMessages(interaction, channelSnowflake);
+				await sendSetupMessages(interaction, channelSnowflake);
 				reply = strings.setup_succesfull[lang];
 			} else {
 				reply = strings.setup_error[lang];
@@ -58,15 +62,15 @@ async function createChannelIfNotExists(interaction, channelName) {
 async function sendSetupMessages(interaction, channelSnowflake) {
 	const selectedChannel = interaction.guild.channels.cache.find(channel => channel.id == channelSnowflake);
 
-	const coverImage = new MessageAttachment("./resources/embed_cover.png");
+	const coverImage = new MessageAttachment("./resources/images/embed_cover.png");
 
 	const messageEmbed = new MessageEmbed()
-	.setAuthor(strings.embed.author[lang])
-	.setDescription(strings.embed.description[lang])
-	.setImage("attachment://embed_cover.png")
-	.setColor("#6C9CF0");
+		.setAuthor(strings.embed.author[lang])
+		.setDescription(strings.embed.description[lang])
+		.setImage("attachment://embed_cover.png")
+		.setColor("#6C9CF0");
 
-	await selectedChannel.send({ files: ["./resources/embed_banner.png"] });
+	await selectedChannel.send({ files: ["./resources/images/embed_banner.png"] });
 	await selectedChannel.send({ embeds: [messageEmbed], files: [coverImage] });
 }
 
