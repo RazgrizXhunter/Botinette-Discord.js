@@ -4,6 +4,7 @@ const { GuildChannelManager, MessageManager, MessageActionRow, MessageSelectMenu
 const guildController = require("./guildController");
 const countryController = require("./countryController");
 const dateController = require("./dateController");
+const utils = require("./utils");
 
 const strings = require("../resources/strings").reactionController;
 const lang = process.env.APP_LANG || "es";
@@ -78,12 +79,9 @@ module.exports = {
 		
 		const message = { content: strings.timezone_prompt[lang], components: [dropdownDM] }
 
-		user.send(message)
-		.then((message) => {
-			setTimeout(() => {
-				message.delete();
-			}, 60 * 1000);
-		});
+		const directMessage = await user.send(message);
+		await utils.wait(60);
+		directMessage.delete();
 		
 		// TODO: wait some time and if the user doesnt respond, remove the dm and unregister the user from the database
 

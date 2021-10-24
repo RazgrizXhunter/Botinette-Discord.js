@@ -4,6 +4,8 @@ const { GuildChannelManager, MessageEmbed, MessageAttachment  } = require("disco
 const { SlashCommandBuilder } = require('@discordjs/builders');
 
 const guildController = require("../controller/guildController");
+const utils = require("../controller/utils");
+
 const strings = require("../resources/strings.json").command_setup;
 const lang = process.env.APP_LANG || "es";
 
@@ -38,7 +40,9 @@ module.exports = {
 			}
 
 			try {
-				await sendTimedMessage(interaction, reply, 5);
+				await interaction.reply(reply);
+				await utils.wait(5);
+				interaction.deleteReply();
 			} catch (error) {
 				console.error(error);
 			}
@@ -88,16 +92,3 @@ async function sendSetupMessages(interaction, channelId) {
 
 	return reactionMessage.id;
 }
-
-async function sendTimedMessage(interaction, message, seconds) {
-	interaction.reply(message)
-	.then(
-		setTimeout(() => {
-			interaction.deleteReply()
-		}, seconds * 1000)
-	).catch(err => console.error(err));
-}
-
-/* Requerimientos
-	-si un usuario marca más de una bandera, que se guarde sólo la primera que marcó
-*/
