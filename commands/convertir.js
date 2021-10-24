@@ -46,13 +46,11 @@ function getDateTime(unformattedString) {
 		hour: 		hour.split(":")[0] || "0",
 		minute: 	hour.split(":")[1] || "0"
 	}
-
-	console.log(JSON.stringify(unformattedObject));
 	
 	try {
 		return DateTime.fromObject(unformattedObject, { zone: timezone, locale: locale });
 	} catch (error) {
-		console.log(error);
+		console.error(error);
 		return false;
 	}
 }

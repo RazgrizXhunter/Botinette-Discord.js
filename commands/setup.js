@@ -3,6 +3,7 @@ require("dotenv").config();
 const { GuildChannelManager, MessageEmbed, MessageAttachment  } = require("discord.js");
 const { SlashCommandBuilder } = require('@discordjs/builders');
 
+const guildController = require("../controller/guildController");
 const strings = require("../resources/strings.json").command_setup;
 const lang = process.env.APP_LANG || "es";
 
@@ -12,16 +13,26 @@ module.exports = {
 		.setDescription(strings.description[lang]),
 		
 		async execute(interaction) {
-			const channelName = strings.channel_name[lang];
-			const channelSnowflake = await createChannelIfNotExists(interaction, channelName);
+			const guildId = interaction.guild.id;
+			const guildDocument = await guildController.findById(guildId);
+			console.log(`The setup has been called for the guild: ${guildId}`);
 
-			console.log(`The channel has been created, and it's snowflake is: ${channelSnowflake}`);
+			const channelName = strings.channel_name[lang];
+			const channelId = await createChannelIfNotExists(interaction, channelName);
 
 			let reply;
 
-			if (channelSnowflake) {
-				await sendSetupMessages(interaction, channelSnowflake);
+			if (channelId) {
+				console.log(`The channel has been created, and it's snowflake is: ${channelId}`);
+				const interactionMessageId = await sendSetupMessages(interaction, channelId);
+
+				guildDocument.interactionChannel._id = channelId;
+				guildDocument.interactionChannel.interactionMessageId = interactionMessageId;
+
+				guildController.update(guildDocument);
+
 				reply = strings.setup_succesfull[lang];
+
 			} else {
 				reply = strings.setup_error[lang];
 			}
@@ -29,7 +40,7 @@ module.exports = {
 			try {
 				await sendTimedMessage(interaction, reply, 5);
 			} catch (error) {
-				console.log(error);
+				console.error(error);
 			}
 
 			return;
@@ -54,13 +65,13 @@ async function createChannelIfNotExists(interaction, channelName) {
 		return channel.id;
 	})
 	.catch(error => {
-		console.log(error);
+		console.error(error);
 		return false;
 	});
 }
 
-async function sendSetupMessages(interaction, channelSnowflake) {
-	const selectedChannel = interaction.guild.channels.cache.find(channel => channel.id == channelSnowflake);
+async function sendSetupMessages(interaction, channelId) {
+	const selectedChannel = interaction.guild.channels.cache.find(channel => channel.id == channelId);
 
 	const coverImage = new MessageAttachment("./resources/images/embed_cover.png");
 
@@ -70,8 +81,12 @@ async function sendSetupMessages(interaction, channelSnowflake) {
 		.setImage("attachment://embed_cover.png")
 		.setColor("#6C9CF0");
 
-	await selectedChannel.send({ files: ["./resources/images/embed_banner.png"] });
-	await selectedChannel.send({ embeds: [messageEmbed], files: [coverImage] });
+	const coverMessage = await selectedChannel.send({ files: ["./resources/images/embed_banner.png"] });
+	const reactionMessage = await selectedChannel.send({ embeds: [messageEmbed], files: [coverImage] });
+
+	// reactionMessage.react("❌")
+
+	return reactionMessage.id;
 }
 
 async function sendTimedMessage(interaction, message, seconds) {
@@ -80,10 +95,9 @@ async function sendTimedMessage(interaction, message, seconds) {
 		setTimeout(() => {
 			interaction.deleteReply()
 		}, seconds * 1000)
-	).catch(err => console.log(err));
+	).catch(err => console.error(err));
 }
 
 /* Requerimientos
-	-añadir un servidor nosql para guardar los países, zona horaria y emoji
 	-si un usuario marca más de una bandera, que se guarde sólo la primera que marcó
 */
