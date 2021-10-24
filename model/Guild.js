@@ -2,13 +2,13 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const GuildSchema = new Schema({
-	guildId: String,
+	_id: String,
 	guildName: String,
-	users: [{
-		userId: String,
-		userName: String,
-		userTimezone: String
-	}]
+	interactionChannel: {
+		_id: String,
+		interactionMessageId: String
+	},
+	users: [{ type: String, ref: "User" }]
 });
 
-module.exports = mongoose.model("guild", GuildSchema);
+module.exports = mongoose.model("Guild", GuildSchema);
