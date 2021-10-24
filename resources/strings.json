@@ -11,6 +11,16 @@
 			"en" : "The command could not be executed."
 		}
 	},
+	"reactionController" : {
+		"timezone_prompt" : {
+			"es" : "Por favor, selecciona tu zona horaria.",
+			"en" : "Please, select your time zone."
+		},
+		"placeholder" : {
+			"es" : "Zonas horarias",
+			"en" : "Time Zones"
+		}
+	},
 	"command_convertir" : {
 		"name" : {
 			"es" : "convertir",
