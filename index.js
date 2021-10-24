@@ -23,21 +23,23 @@ SOFTWARE.
 
 require("dotenv").config();
 
-const { Client, Intents } = require("discord.js");
-const strings = require("./resources/strings").index;
-const handler = require("./controller/handler");
+const mongoose = require("mongoose");
+
+const { Client, Intents, ReactionManager } = require("discord.js");
+
+const strings = require("./resources/strings");
+
+const offlineEventsHandler = require("./controller/offlineEventsHandler");
+const guildController = require("./controller/guildController");
+const userController = require("./controller/userController");
+const reactionController = require("./controller/reactionController");
 const commandManager = require("./controller/commandManager");
+const database = require("./controller/database");
 
 const lang = process.env.APP_LANG || "es";
 const token = process.env.TOKEN;
 
-const database = require("./controller/mongoDB").connect(
-	process.env.MONGOOSE_URI,
-	process.env.MONGOOSE_PORT,
-	process.env.MONGOOSE_USER,
-	process.env.MONGOOSE_PASSWORD,
-	process.env.NODE_ENV == "development" ? "Botinette-Dev" : "Botinette"
-);
+
 
 const client = new Client({
 	intents: [
@@ -47,76 +49,119 @@ const client = new Client({
 		Intents.FLAGS.GUILD_VOICE_STATES //Not necessary if the bot wont play music
 	], partials: [
 		"REACTION",
-		"MESSAGE"
+		"MESSAGE",
+		"USER",
+		"GUILD_MEMBER",
+		"CHANNEL"
 	]
 });
 
 commandManager.importCommands(client);
 
-client.once("ready", () => {
-	try {
-		handler.revive(client);
-	} catch (error) {
-		console.log(`There was an error while reviving the bot.\n${error}`);
-	}
+client.once("ready", async () => {
+	console.log("Bot awoken, trying to connect to the database...");
+	database.connect();
+});
 
-	console.log(`The bot has been revived.`);
+mongoose.connection.on("connected", () => {
+	console.log("database connected, handling offline events:");
+	try {
+		offlineEventsHandler.updateDatabase(client);
+	} catch (error) {
+		throw error;
+	}
 });
 
 client.on("interactionCreate", async (interaction) => {
 	const command = client.commands.get(interaction.commandName);
-	if (!interaction.isCommand() && !command) return;
-
-	try {
-		await command.execute(interaction);
-	} catch (error) {
-		console.log(`There was a fatal error executing the command: ${command}`);
-		await interaction.reply({ content: strings.default_execution_error[lang], ephemeral: true });
+	if (interaction.isCommand() && command) {
+		try {
+			await command.execute(interaction);
+		} catch (error) {
+			console.error(`There was a fatal error executing the command: ${command}`);
+			await interaction.reply({ content: strings.index.default_execution_error[lang], ephemeral: true });
+		}
+	} else if (interaction.isSelectMenu()) {
+		interaction.user.dmChannel.messages.fetch(interaction.message.id).then((message) => { message.delete() });
+		console.log(interaction);
 	}
 });
 
 client.on("messageReactionAdd", async (reaction, user) => {
-	if (reaction.message.partial) {
-		try {
-			await reaction.message.fetch();
-		} catch (error) {
-			console.log(error);
-		}
+	// this doesnt register the dm choice TODO: check how to register the dm choice.
+	// there's <t:UNIXTIMESTAMP> to convert automatically a datetime to the user's location, check how it does it and if it is reliable
+	if (user.bot) return;
+
+	if ( !(await reactionController.isInTheRightChannel(reaction)) ) return;
+	
+	const isToTheRightMessage = await reactionController.isToTheRightMessage(reaction);
+
+	let userDocument = await userController.findById(user.id);
+	const guildDocument = await guildController.findById(reaction.message.guild.id);
+
+	const isRegistered = userDocument ? true : false;
+	
+	if (!isRegistered && isToTheRightMessage) {
+		userDocument = userController.create(user);
+	}
+	
+	if (isToTheRightMessage && isRegistered && reaction.emoji.name == "❌") {
+		console.log(`The user with ID: ${user.id} has opted-out. Removing...`);
+
+		await guildController.removeUser(guildDocument, userDocument);
+		await userController.delete(userDocument);
 	}
 
-	//check if the reaction was to the correct message
-	//check if the reaction was a country flag, otherwise delete the reaction and send timed message warning the user to use a flag	
+	if (isToTheRightMessage && await reactionController.isAValidFlag(reaction.emoji.name)) {
+		console.log(`The user with ID: ${user.id} sent a valid flag, saving to the database`);
 
-	console.log(`The user: ${user.username} has reacted with ${reaction.emoji}\nid:${user.id}`);
-});
+		if (!isRegistered) {
+			await userController.insert(userDocument);
+			await guildController.addUser(guildDocument, userDocument);
 
-client.on("messageReactionRemove", async (reaction, user) => {
-	if (reaction.message.partial) {
-		try {
-			await reaction.message.fetch();
-		} catch (error) {
-			console.log(error);
 		}
+		reactionController.sendTimezonesDM(reaction.emoji.name, user); // TODO: Add a collector to the message sent, if there's only one tz, select that without prompt
 	}
 
-	//check if the reaction was to the correct message
-	//check if the reaction was a country flag, otherwise delete the reaction and send timed message warning the user to use a flag	
-
-	console.log(`A reaction has been removed from a message.\n${reaction.emoji}`);
+	reaction.users.reaction.remove();
 });
 
-client.on("guildCreate", (guild) => {
-	//save ID and name to the db
+client.on("channelDelete", async (channel) => {
+	const guildDocument = await guildController.findById(channel.guild.id);
+
+	if (!guildDocument.interactionChannel._id) return;
+
+	if (channel.id == guildDocument.interactionChannel._id) {
+		guildDocument.interactionChannel = {
+			_id: null,
+			interactionMessageId: null
+		};
+
+		guildController.update(guildDocument);
+	}
+});
+
+client.on("guildCreate", async (guild) => {
+	guild = guildController.create(guild);
+
+	guildController.insert(guild);
+
 	console.log(`The bot has been added to a guild: ${guild.id}`);
 });
 
-client.on("channelUpdate", (oldChannel, newChannel) => {
-	//update name with said ID to the db
-	console.log(`A guild the bot is in has been updated: ${oldChannel.id}`);
+client.on("guildUpdate", (oldGuild, newGuild) => {
+	newGuild = guildController.create(newGuild);
+
+	guildController.update(newGuild);
+
+	console.log(`A guild the bot is in has been updated: ${newGuild.id}`);
 });
 
 client.on("guildDelete", (guild) => {
-	//remove channel from the db
+	guild = guildController.create(guild);
+	
+	guildController.delete(guild);
+
 	console.log(`The bot has been removed from a guild: ${guild.id}`);
 });
 
