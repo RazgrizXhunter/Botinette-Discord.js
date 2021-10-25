@@ -129,7 +129,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
 		
 		const directMessage = await reactionController.sendTimezonesDM(reaction.emoji.name, user);
 
-		await utils.wait(10);
+		await utils.wait(60);
 
 		try {
 			await directMessage.delete(); // if the user makes a choice, this message gets deleted and raises an error when trying to delete it again
