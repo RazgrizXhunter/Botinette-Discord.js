@@ -27,7 +27,6 @@ const mongoose = require("mongoose");
 
 const { Client, Intents, ChannelManager } = require("discord.js");
 
-const strings = require("./resources/strings");
 
 const offlineEventsHandler = require("./controller/offlineEventsHandler");
 const guildController = require("./controller/guildController");
@@ -37,10 +36,10 @@ const commandManager = require("./controller/commandManager");
 const utils = require("./controller/utils");
 const database = require("./controller/database");
 
+const strings = require("./resources/strings");
 const lang = process.env.APP_LANG || "es";
+
 const token = process.env.TOKEN;
-
-
 
 const client = new Client({
 	intents: [
@@ -123,29 +122,37 @@ client.on("messageReactionAdd", async (reaction, user) => {
 
 	if (isToTheRightMessage && await reactionController.isAValidFlag(reaction.emoji.name)) {
 		console.log(`The user with ID: ${user.id} sent a valid flag, saving to the database`);
-		console.log(reaction);
 
 		if (!isRegistered) { // from this point it has nothing to do with the reaction, move this somewhere else
 			await userController.insert(userDocument);
 			await guildController.addUser(guildDocument, userDocument);
 		}
-		
-		
-		console.log(user.isPartial());
-		const directMessage = await reactionController.sendTimezonesDM(reaction.emoji.name, user); //this should not be executed again if the user has one message pending
 
-		await utils.wait(60);
+		let lastMessage;
+		
+		const dmChannel = await user.createDM();
+		const dmMessages = await dmChannel.messages.fetch();
+		if (dmMessages.size) { // there's three ways of doing this. 1. check if the dm channel is empty. 2. check the contents of the last message. 3. check all messages for the message we want (slower but more secure if we expand the bot).
+			lastMessage = Array.from(dmMessages)[dmMessages.size-1][1];
+		}
 
-		try {
-			await directMessage.delete(); // if the user makes a choice, this message gets deleted and raises an error when trying to delete it again
-			
-			if(!userDocument.userTimezone) {
-				await guildController.removeUser(guildDocument, userDocument);
-				await userController.delete(userDocument);
-			}
-		} catch (error) {
-			if (error.message != "Unknown Message") {
-				console.error(error);
+
+		if (!lastMessage || (lastMessage.content != strings.reaction_controller.timezone_prompt[lang])) {
+			const directMessage = await reactionController.sendTimezonesDM(reaction.emoji.name, user); //this should not be executed again if the user has one message pending
+		
+			await utils.wait(60);
+
+			try {
+				await directMessage.delete(); // if the user makes a choice, this message gets deleted and raises an error when trying to delete it again
+				
+				if(!userDocument.userTimezone) {
+					await guildController.removeUser(guildDocument, userDocument);
+					await userController.delete(userDocument);
+				}
+			} catch (error) {
+				if (error.message != "Unknown Message") {
+					console.error(error);
+				}
 			}
 		}
 	}

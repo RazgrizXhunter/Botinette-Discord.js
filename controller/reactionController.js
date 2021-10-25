@@ -7,7 +7,7 @@ const countryController = require("./countryController");
 const dateController = require("./dateController");
 const utils = require("./utils");
 
-const strings = require("../resources/strings").reactionController;
+const strings = require("../resources/strings").reaction_controller;
 const lang = process.env.APP_LANG || "es";
 
 module.exports = {
@@ -67,7 +67,7 @@ module.exports = {
 		
 		const message = { content: strings.timezone_prompt[lang], components: [dropdownDM] }
 
-		return await user.send(message);
+		return user.send(message);
 	}
 }
 
