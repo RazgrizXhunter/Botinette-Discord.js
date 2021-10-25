@@ -82,8 +82,16 @@ client.on("interactionCreate", async (interaction) => {
 			await interaction.reply({ content: strings.index.default_execution_error[lang], ephemeral: true });
 		}
 	} else if (interaction.isSelectMenu()) {
-		interaction.user.dmChannel.messages.fetch(interaction.message.id).then((message) => { message.delete() });
-		console.log(interaction);
+		const userDocument = await userController.findById(interaction.user.id);
+
+		if (!userDocument) return;
+
+		const selectMenu = await interaction.user.dmChannel.messages.fetch(interaction.message.id);
+		const timezone = interaction.values[0];
+		userDocument.userTimezone = timezone;
+		userController.update(userDocument);
+
+		selectMenu.delete();
 	}
 });
 
@@ -93,12 +101,11 @@ client.on("messageReactionAdd", async (reaction, user) => {
 	if (user.bot) return;
 
 	if ( !(await reactionController.isInTheRightChannel(reaction)) ) return;
-	
-	const isToTheRightMessage = await reactionController.isToTheRightMessage(reaction);
 
 	let userDocument = await userController.findById(user.id);
 	const guildDocument = await guildController.findById(reaction.message.guild.id);
-
+	
+	const isToTheRightMessage = await reactionController.isToTheRightMessage(reaction);
 	const isRegistered = userDocument ? true : false;
 	
 	if (!isRegistered && isToTheRightMessage) {
@@ -118,9 +125,22 @@ client.on("messageReactionAdd", async (reaction, user) => {
 		if (!isRegistered) {
 			await userController.insert(userDocument);
 			await guildController.addUser(guildDocument, userDocument);
-
 		}
-		reactionController.sendTimezonesDM(reaction.emoji.name, user); // TODO: Add a collector to the message sent, if there's only one tz, select that without prompt
+		
+		const directMessage = await reactionController.sendTimezonesDM(reaction.emoji.name, user);
+
+		await utils.wait(10);
+
+		try {
+			await directMessage.delete(); // if the user makes a choice, this message gets deleted and raises an error when trying to delete it again
+			
+			await guildController.removeUser(guildDocument, userDocument);
+			await userController.delete(userDocument)
+		} catch (error) {
+			if (error.message != "Unknown Message") {
+				console.error(error);
+			}
+		}
 	}
 
 	reaction.users.reaction.remove();

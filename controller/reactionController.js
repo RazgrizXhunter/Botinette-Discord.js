@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const { GuildChannelManager, MessageManager, MessageActionRow, MessageSelectMenu } = require("discord.js");
 const guildController = require("./guildController");
+const userController = require("./userController");
 const countryController = require("./countryController");
 const dateController = require("./dateController");
 const utils = require("./utils");
@@ -54,20 +55,7 @@ module.exports = {
 
 		if (!country) return;
 
-		let options = []
-
-		for (const timezone of country.timezones) {
-			const date = dateController.getNowFromTimezone(timezone);
-			const city = timezone.split("/")[timezone.split("/").length - 1].replace("_", " ");
-
-			const payload = {
-				label: city,
-				description: date.toFormat("HH:mm").toString(),
-				value: timezone
-			} 
-
-			options.push(payload);
-		}
+		let options = getTimeZonesPayload(country);
 
 		const dropdownDM = new MessageActionRow()
 		.addComponents(
@@ -79,12 +67,7 @@ module.exports = {
 		
 		const message = { content: strings.timezone_prompt[lang], components: [dropdownDM] }
 
-		const directMessage = await user.send(message);
-		await utils.wait(60);
-		directMessage.delete();
-		
-		// TODO: wait some time and if the user doesnt respond, remove the dm and unregister the user from the database
-
+		return await user.send(message);
 	}
 }
 
@@ -98,4 +81,23 @@ async function fetchMessageFromPartial(reaction) {
 	}
 
 	return reaction;
+}
+
+function getTimeZonesPayload(country) {
+	let options = [];
+
+	for (const timezone of country.timezones) {
+		const date = dateController.getNowFromTimezone(timezone);
+		const city = timezone.split("/")[timezone.split("/").length - 1].replace("_", " ");
+
+		const payload = {
+			label: city,
+			description: date.toFormat("HH:mm").toString(),
+			value: timezone
+		} 
+
+		options.push(payload);
+	}
+	
+	return options;
 }
