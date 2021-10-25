@@ -8,11 +8,10 @@ module.exports = {
 		await purgeDatabase(cachedGuilds);
 		
 		await addNewGuilds(cachedGuilds);
-		
-		await removeUnhandledReactions(client);
 
 		console.log("Database is now up-to-date.");
-	}
+	},
+	removeUnhandledReactions: removeUnhandledReactions
 }
 
 async function purgeDatabase(cachedGuilds) { // This name does not represent what this function does.

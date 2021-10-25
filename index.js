@@ -25,7 +25,7 @@ require("dotenv").config();
 
 const mongoose = require("mongoose");
 
-const { Client, Intents, ReactionManager } = require("discord.js");
+const { Client, Intents, ChannelManager } = require("discord.js");
 
 const strings = require("./resources/strings");
 
@@ -34,6 +34,7 @@ const guildController = require("./controller/guildController");
 const userController = require("./controller/userController");
 const reactionController = require("./controller/reactionController");
 const commandManager = require("./controller/commandManager");
+const utils = require("./controller/utils");
 const database = require("./controller/database");
 
 const lang = process.env.APP_LANG || "es";
@@ -63,12 +64,13 @@ client.once("ready", async () => {
 	database.connect();
 });
 
-mongoose.connection.on("connected", () => {
+mongoose.connection.on("connected", async () => {
 	console.log("database connected, handling offline events:");
 	try {
-		offlineEventsHandler.updateDatabase(client);
+		await offlineEventsHandler.updateDatabase(client);
+		offlineEventsHandler.removeUnhandledReactions(client);
 	} catch (error) {
-		throw error;
+		console.error(error);
 	}
 });
 
@@ -96,8 +98,8 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.on("messageReactionAdd", async (reaction, user) => {
-	// this doesnt register the dm choice TODO: check how to register the dm choice.
 	// there's <t:UNIXTIMESTAMP> to convert automatically a datetime to the user's location, check how it does it and if it is reliable
+	reaction.users.reaction.remove();
 	if (user.bot) return;
 
 	if ( !(await reactionController.isInTheRightChannel(reaction)) ) return;
@@ -112,38 +114,41 @@ client.on("messageReactionAdd", async (reaction, user) => {
 		userDocument = userController.create(user);
 	}
 	
-	if (isToTheRightMessage && isRegistered && reaction.emoji.name == "❌") {
+	if (isToTheRightMessage && isRegistered && reaction.emoji.name == "❌") { // make this prettier?
 		console.log(`The user with ID: ${user.id} has opted-out. Removing...`);
 
-		await guildController.removeUser(guildDocument, userDocument);
+		await guildController.removeUser(guildDocument, userDocument); // move this somewhere else
 		await userController.delete(userDocument);
 	}
 
 	if (isToTheRightMessage && await reactionController.isAValidFlag(reaction.emoji.name)) {
 		console.log(`The user with ID: ${user.id} sent a valid flag, saving to the database`);
+		console.log(reaction);
 
-		if (!isRegistered) {
+		if (!isRegistered) { // from this point it has nothing to do with the reaction, move this somewhere else
 			await userController.insert(userDocument);
 			await guildController.addUser(guildDocument, userDocument);
 		}
 		
-		const directMessage = await reactionController.sendTimezonesDM(reaction.emoji.name, user);
+		
+		console.log(user.isPartial());
+		const directMessage = await reactionController.sendTimezonesDM(reaction.emoji.name, user); //this should not be executed again if the user has one message pending
 
 		await utils.wait(60);
 
 		try {
 			await directMessage.delete(); // if the user makes a choice, this message gets deleted and raises an error when trying to delete it again
 			
-			await guildController.removeUser(guildDocument, userDocument);
-			await userController.delete(userDocument)
+			if(!userDocument.userTimezone) {
+				await guildController.removeUser(guildDocument, userDocument);
+				await userController.delete(userDocument);
+			}
 		} catch (error) {
 			if (error.message != "Unknown Message") {
 				console.error(error);
 			}
 		}
 	}
-
-	reaction.users.reaction.remove();
 });
 
 client.on("channelDelete", async (channel) => {
